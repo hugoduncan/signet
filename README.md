@@ -3,7 +3,9 @@
 A library for signing HTTP request maps.  Only works with string based request
 bodies at the moment.
 
-Based on [Mixlib::Authentication](http://github.com/opscode/mixlib-authentication).
+Based on
+[Mixlib::Authentication](http://github.com/opscode/mixlib-authentication) via
+[JClouds](http://github.com/jclouds/jclouds).
 
 ## Usage
 
