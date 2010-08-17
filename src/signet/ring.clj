@@ -9,8 +9,10 @@
    [clj-time.format :as time-format])
   (:import
    java.security.KeyFactory
+   java.security.KeyPairGenerator
    java.security.MessageDigest
    java.security.NoSuchAlgorithmException
+   java.security.SecureRandom
    java.security.cert.CertificateFactory
    java.security.cert.X509Certificate
    java.security.spec.PKCS8EncodedKeySpec
@@ -34,16 +36,48 @@
 (def *digest-alg* "sha1")
 (def *cipher-alg* "RSA")
 
-(defonce markers
-     {"-----BEGIN RSA PRIVATE KEY-----" :pkcs1-private
-      "-----BEGIN PRIVATE KEY-----" :pkcs8-private
-      "-----BEGIN CERTIFICATE-----" :x509
-      "-----BEGIN PUBLIC KEY-----" :x509-public
-      "-----BEGIN RSA PUBLIC KEY-----" :pkcs1-public})
+(def markers
+     {"-----BEGIN RSA PRIVATE KEY-----" :pkcs#1-private
+      "-----BEGIN PRIVATE KEY-----" :pkcs#8
+      "-----BEGIN CERTIFICATE-----" :x.509-certificate
+      "-----BEGIN PUBLIC KEY-----" :x.509
+      "-----BEGIN RSA PUBLIC KEY-----" :pkcs#1-public})
+
+(def begin-markers
+  (into {} (map #(vector (second %) (first %)) markers)))
+
+(def end-markers
+  (into {} (map #(vector (first %) (string/replace (second %) "BEGIN" "END"))
+                begin-markers)))
 
 (defonce cert-factory (delay (CertificateFactory/getInstance "X.509")))
 (defonce rsa-key-factory (delay (KeyFactory/getInstance "RSA")))
+(defonce rsa-keypair-generator (delay
+                                (doto (KeyPairGenerator/getInstance "RSA")
+                                  (.initialize 2048 (SecureRandom.)))))
 
+(defn rsa-keypair
+  "Return a public, private keypair"
+  []
+  ((juxt #(.getPublic %) #(.getPrivate %))
+   (.generateKeyPair @rsa-keypair-generator)))
+
+(defn pem-encode
+  ([key] (pem-encode key (keyword (string/lower-case (.getFormat key)))))
+  ([key key-type]
+     (str
+      (begin-markers key-type)
+      \newline
+      (string/join
+       "\n"
+       (map
+        #(apply str %)
+        (partition
+         64 64 (repeat nil)
+         (Base64/encodeBytes
+          (.getEncoded key)))))
+      \newline
+      (end-markers key-type))))
 
 (defn pem-decode [bytes]
   "Decode a PEM encoded key/certificate"
@@ -51,15 +85,15 @@
     (let [reader (PEMReader. in)
           marker (.getBeginMarker reader)]
       (condp = (markers marker)
-          :pkcs1-private (.getKeySpec
+          :pkcs#1-private (.getKeySpec
+                           (PKCS1EncodedKeySpec. (.getDerBytes reader)))
+          :pkcs#1-public (.getKeySpec
                           (PKCS1EncodedKeySpec. (.getDerBytes reader)))
-          :pkcs1-public (.getKeySpec
-                         (PKCS1EncodedKeySpec. (.getDerBytes reader)))
-          :x509-public (X509EncodedKeySpec. (.getDerBytes reader))
-          :x509 (with-open [in (java.io.ByteArrayInputStream.
-                                (.getDerBytes reader))]
-                  (.generateCertificate @cert-factory in))
-          :pkcs8-private (PKCS8EncodedKeySpec. (.getDerBytes reader))
+          :x.509 (X509EncodedKeySpec. (.getDerBytes reader))
+          :x.509-certificate (with-open [in (java.io.ByteArrayInputStream.
+                                             (.getDerBytes reader))]
+                               (.generateCertificate @cert-factory in))
+          :pkcs#8 (PKCS8EncodedKeySpec. (.getDerBytes reader))
           (condition/raise
            :type :unknown-key-encoding
            :message (format
@@ -97,7 +131,7 @@
 
 (defn digest-body
   [body]
-  (Base64/encodeBytes (digest body)))
+  (Base64/encodeBytes (digest (or body ""))))
 
 (defn digest-path
   [path]
@@ -111,7 +145,8 @@
   "Calculate a signature string for a request"
   [request-method path-hash content-hash timestamp user-id]
   (str
-   signature-method ":" (string/upper-case (name request-method)) \newline
+   signature-method ":" (string/upper-case
+                         (name (or request-method "GET"))) \newline
    signature-hashed-path ":" path-hash \newline
    x-ops-content-hash ":" content-hash \newline
    x-ops-timestamp ":" timestamp \newline

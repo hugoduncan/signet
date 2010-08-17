@@ -49,6 +49,26 @@ YlkUQYXhy9JixmUUKtH+NXkKX7Lyc8XYw5ETr7JBT3ifs+G7HruDjVG78EJVojbd
   (is (instance? java.security.spec.X509EncodedKeySpec
                  (pem-decode (.getBytes public-key)))))
 
+(deftest pem-encode-test
+  (testing "roundtrip"
+    ; pkcs#1 -> key -> pkcs#8, so not testable
+    (is (= public-key
+           (pem-encode
+            (rsa-public-key (pem-decode (.getBytes public-key)))))))
+  (testing "roundtrip to key"
+    (is (= (rsa-key (pem-decode (.getBytes private-key)))
+           (rsa-key
+            (pem-decode
+             (.getBytes
+              (pem-encode
+               (rsa-key (pem-decode (.getBytes private-key)))))))))
+    (is (= (rsa-public-key (pem-decode (.getBytes public-key)))
+           (rsa-public-key
+            (pem-decode
+             (.getBytes
+              (pem-encode
+               (rsa-public-key (pem-decode (.getBytes public-key)))))))))))
+
 (deftest canonical-path-test
   (is (= "/" (canonical-path "///")) "elide multiple /")
   (is (= "/path" (canonical-path "/path/")) "Remove trailing /")
