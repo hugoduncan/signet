@@ -1,28 +1,28 @@
 (ns signet.ring
   "Signing of HTTP request maps.
-   Based on Mixlib::Authentication."
+  Based on Mixlib::Authentication."
   (:require
-   [clojure.string :as string]
-   [clojure.contrib.condition :as condition]
-   [clojure.contrib.logging :as logging]
-   [clj-time.core :as clj-time]
-   [clj-time.format :as time-format])
+    [clojure.string :as string]
+    [slingshot.slingshot :as slingshot]
+    [clojure.tools.logging :as logging]
+    [clj-time.core :as clj-time]
+    [clj-time.format :as time-format])
   (:import
-   java.security.KeyFactory
-   java.security.KeyPairGenerator
-   java.security.MessageDigest
-   java.security.NoSuchAlgorithmException
-   java.security.SecureRandom
-   java.security.cert.CertificateFactory
-   java.security.cert.X509Certificate
-   java.security.spec.PKCS8EncodedKeySpec
-   java.security.spec.RSAPrivateKeySpec
-   java.security.spec.X509EncodedKeySpec
-   javax.crypto.Cipher
-   javax.crypto.NoSuchPaddingException
-   net.iharder.Base64
-   net.oauth.signature.pem.PEMReader
-   net.oauth.signature.pem.PKCS1EncodedKeySpec))
+    java.security.KeyFactory
+    java.security.KeyPairGenerator
+    java.security.MessageDigest
+    java.security.NoSuchAlgorithmException
+    java.security.SecureRandom
+    java.security.cert.CertificateFactory
+    java.security.cert.X509Certificate
+    java.security.spec.PKCS8EncodedKeySpec
+    java.security.spec.RSAPrivateKeySpec
+    java.security.spec.X509EncodedKeySpec
+    javax.crypto.Cipher
+    javax.crypto.NoSuchPaddingException
+    net.iharder.Base64
+    net.oauth.signature.pem.PEMReader
+    net.oauth.signature.pem.PKCS1EncodedKeySpec))
 
 (defonce x-ops-authorization- "X-Ops-Authorization-")
 (defonce x-ops-content-hash "X-Ops-Content-Hash")
@@ -33,8 +33,8 @@
 (defonce signature-method "Method")
 (defonce signature-hashed-path "Hashed Path")
 
-(def *digest-alg* "sha1")
-(def *cipher-alg* "RSA")
+(def ^:dynamic *digest-alg* "sha1")
+(def ^:dynamic *cipher-alg* "RSA")
 
 (def markers
      {"-----BEGIN RSA PRIVATE KEY-----" :pkcs#1-private
@@ -94,7 +94,7 @@
                                              (.getDerBytes reader))]
                                (.generateCertificate @cert-factory in))
           :pkcs#8 (PKCS8EncodedKeySpec. (.getDerBytes reader))
-          (condition/raise
+          (slingshot/throw+
            :type :unknown-key-encoding
            :message (format
                      "Unknown key encoding for PEM marker %s" marker))))))
