@@ -15,8 +15,12 @@ The two main methods are `seal` and `unseal`.
 
 Available on [clojars](http://clojars.org/signet/signet).
 
+```clj
+:dependencies [[signet "0.1.0"]]
+```
+
 ## License
 
-Copyright (C) 2010 Hugo Duncan
+Copyright (C) 2010, 2012 Hugo Duncan
 
 Licensed under [EPL](http://www.eclipse.org/legal/epl-v10.html)

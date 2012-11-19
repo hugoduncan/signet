@@ -1,4 +1,4 @@
-(defproject signet "0.1.0-SNAPSHOT"
+(defproject signet "0.1.0"
   :description "HTTP request signing"
   :url "https://github.com/hugoduncan/signet"
   :license {:name "Eclipse Public License - v 1.0"
